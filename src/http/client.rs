@@ -269,6 +269,28 @@ impl EspHttpConnection {
         Ok(())
     }
 
+    ///Modify a get request with no headers from one HTTP stream to another. 
+    /// This is needed when dealing with endless responses (as it avoids blocking on flushing a never-ending response).
+    pub fn modify_get_request<'a>(&mut self, uri: &'a str) -> Result<(), EspError> {
+
+        //close old connection
+        esp!(unsafe { esp_http_client_close(self.raw_client) })?;
+        
+        //Set new connection
+        let c_uri = to_cstring_arg(uri)?;
+        esp!(unsafe { esp_http_client_set_url(self.raw_client, c_uri.as_ptr() as _) })?;
+
+        
+        self.request_content_len = 0;
+            
+        esp!(unsafe { esp_http_client_open(self.raw_client, self.request_content_len as i32) })?;
+        
+        self.state = State::Request;
+
+        Ok(())
+
+    }
+
     pub fn is_request_initiated(&self) -> bool {
         self.state == State::Request
     }
